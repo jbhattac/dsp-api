@@ -61,7 +61,7 @@
 			<artifactId>h2</artifactId>
 			<scope>runtime</scope>
 		</dependency>
-			<!-- Java Utilities from google -->
+		<!-- Java Utilities from google -->
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
@@ -81,8 +81,8 @@
 			<artifactId>springfox-swagger-ui</artifactId>
 			<version>${io.springfox.springfox-swagger-ui}</version>
 		</dependency>
-		
-			<!-- For testing possibility -->
+
+		<!-- For testing possibility -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
