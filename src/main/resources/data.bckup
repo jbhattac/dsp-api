@@ -1,0 +1,11 @@
+/**
+ * CREATE Script for init of DB
+ */
+
+-- Create 2 account
+
+insert into account (id, ACCOUNTNUMBER, BALANCE, EMAIL, USERNAME) values (1, 'JB1234', 10.50, 'joydeep.bha@gmail.com',
+ 'joy01');
+
+insert into account (id, ACCOUNTNUMBER, BALANCE, EMAIL, USERNAME) values (2, 'DB1234', 50.50, 'deb.bha@gmail.com',
+ 'deb01');
