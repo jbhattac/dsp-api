@@ -8,13 +8,13 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Banners
 {
-    private String bidPrice;
+    private int bidPrice;
 
     private String id;
 
-    private String budget;
+    private int budget;
 
-    private String active;
+    private boolean active;
 
     private Size size;
 

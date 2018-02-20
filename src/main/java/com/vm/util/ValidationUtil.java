@@ -23,7 +23,7 @@ public class ValidationUtil
      */
     public static boolean validateArgs(String ssp, String tid, String adSize) throws InvalidInputException
     {
-        if (isNotNullOrEmpty(ssp) && isNotNullOrEmpty(tid) && isNotNullOrEmpty(adSize))
+        if (CommonUtil.isNotNullOrEmpty(ssp) && CommonUtil.isNotNullOrEmpty(tid) && CommonUtil.isNotNullOrEmpty(adSize))
         {
             try
             {
@@ -45,9 +45,5 @@ public class ValidationUtil
     }
 
 
-    public static boolean isNotNullOrEmpty(String str)
-    {
-        return str != null && !str.isEmpty() && !str.trim().equals("") && !str.trim().equalsIgnoreCase("null");
-    }
-
+    
 }

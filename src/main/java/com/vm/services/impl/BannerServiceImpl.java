@@ -3,8 +3,12 @@ package com.vm.services.impl;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +18,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,6 +26,8 @@ import com.vm.config.BannerConfig;
 import com.vm.config.BannerConfig.Token;
 import com.vm.model.BannerPojo;
 import com.vm.model.Banners;
+import com.vm.model.Size;
+import com.vm.services.BannerService;
 
 /**
  * We put things that are related to the Banner service 
@@ -30,7 +35,7 @@ import com.vm.model.Banners;
  * <p/>
  */
 @Service
-public class BannerServiceImpl
+public class BannerServiceImpl implements BannerService
 {
     private final RestTemplate restTemplate;
 
@@ -38,7 +43,7 @@ public class BannerServiceImpl
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BannerServiceImpl.class);
 
-    private ConcurrentHashMap<String, Banners> store = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<String, Banners> store = new ConcurrentHashMap<>();
 
     private static final SimpleDateFormat dateFormat =
         new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
@@ -52,26 +57,72 @@ public class BannerServiceImpl
     }
 
 
-    @Scheduled(fixedRate = 10000)
-    public void getAllBanners() throws RestClientException, JsonProcessingException
+    @Override
+    public Banners getFilteredBanners(Size size)
     {
-        LOGGER.info("Starting to get banner data from the api ");
-        if (null == config.getToken())
+        final Comparator<Banners> bannerComp = (p1, p2) -> Integer.compare(p1.getBidPrice(), p2.getBidPrice());
+        Banners banner = null;
+        List<Banners> bannerList = store.values()
+            .stream()
+            .filter(p -> p.isActive())
+            .filter(p -> size.equals(p.getSize()))
+            .filter(p -> p.getBudget() > 0)
+            .collect(Collectors.toList());
+
+        if (Optional.ofNullable(bannerList).isPresent() && bannerList.size() > 0)
         {
-            createToken();
+            banner = bannerList.stream().max(bannerComp).get();
         }
-        HttpHeaders requestHeaders = createHeaders(true);
-        HttpEntity<?> httpEntity = new HttpEntity<Object>(requestHeaders);
-        ResponseEntity<BannerPojo> response = restTemplate.exchange(config.getBannersUrl(), HttpMethod.GET, httpEntity, BannerPojo.class);
-        BannerPojo banners = response.getBody();
-        Arrays.asList(banners.getBanners())
-            .forEach(p -> store.put(p.getId(), p));
-        store.values().forEach(p->LOGGER.info(p.toString()));
-        LOGGER.info("Updated the banner store " + dateFormat.format(new Date()));
+        if (null != banner)
+        {
+            banner.setBudget(banner.getBudget() - banner.getBidPrice());
+        }
+
+        return banner;
 
     }
 
 
+    /* (non-Javadoc)
+     * @see com.vm.services.impl.BannerService#getAllBanners()
+     */
+    @Override
+    @Scheduled(fixedRate = 10000)
+    public void getAllBanners()
+    {
+        LOGGER.info("Starting to get banner data from the api ");
+
+        try
+        {
+            if (null == config.getToken())
+            {
+                createToken();
+            }
+            HttpHeaders requestHeaders = createHeaders(true);
+            HttpEntity<?> httpEntity = new HttpEntity<Object>(requestHeaders);
+            ResponseEntity<BannerPojo> response = restTemplate.exchange(config.getBannersUrl(), HttpMethod.GET, httpEntity, BannerPojo.class);
+            BannerPojo banners = response.getBody();
+            Arrays.asList(banners.getBanners())
+                .stream()
+                .filter(p-> (null == store.get(p.getId())))
+                .forEach(p -> store.put(p.getId(), p));
+            store.values().forEach(p -> LOGGER.info(p.toString()));
+            LOGGER.info("Updated the banner store " + dateFormat.format(new Date()));
+
+        }
+        catch (JsonProcessingException e)
+        {
+            LOGGER.error("Error in communicating with banner server store will not be updated ", e);
+
+        }
+
+    }
+
+
+    /* (non-Javadoc)
+     * @see com.vm.services.impl.BannerService#createToken()
+     */
+    @Override
     public void createToken() throws JsonProcessingException
     {
         ResponseEntity<String> response =
