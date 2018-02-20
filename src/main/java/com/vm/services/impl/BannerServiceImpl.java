@@ -1,7 +1,9 @@
 package com.vm.services.impl;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -37,6 +40,9 @@ public class BannerServiceImpl
 
     private ConcurrentHashMap<String, Banners> store = new ConcurrentHashMap<>();
 
+    private static final SimpleDateFormat dateFormat =
+        new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+
 
     public BannerServiceImpl(RestTemplate restTemplate, BannerConfig config)
     {
@@ -46,15 +52,22 @@ public class BannerServiceImpl
     }
 
 
+    @Scheduled(fixedRate = 10000)
     public void getAllBanners() throws RestClientException, JsonProcessingException
     {
+        LOGGER.info("Starting to get banner data from the api ");
+        if (null == config.getToken())
+        {
+            createToken();
+        }
         HttpHeaders requestHeaders = createHeaders(true);
         HttpEntity<?> httpEntity = new HttpEntity<Object>(requestHeaders);
         ResponseEntity<BannerPojo> response = restTemplate.exchange(config.getBannersUrl(), HttpMethod.GET, httpEntity, BannerPojo.class);
         BannerPojo banners = response.getBody();
         Arrays.asList(banners.getBanners())
             .forEach(p -> store.put(p.getId(), p));
-       store.values().stream().forEach(Banners::toString);
+        store.values().forEach(p->LOGGER.info(p.toString()));
+        LOGGER.info("Updated the banner store " + dateFormat.format(new Date()));
 
     }
 

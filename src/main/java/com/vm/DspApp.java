@@ -5,12 +5,14 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.vm.config.BannerConfig;
 import com.vm.config.SwaggerConfig;
 import com.vm.services.impl.BannerServiceImpl;
 
 @SpringBootApplication
+@EnableScheduling
 @Import(SwaggerConfig.class)
 public class DspApp implements CommandLineRunner
 {
@@ -25,9 +27,7 @@ public class DspApp implements CommandLineRunner
     @Override
     public void run(String... args) throws Exception
     {
-        bannerService.createToken();
-        config.getToken().getToken();
-        bannerService.getAllBanners();
+
 
     }
     
