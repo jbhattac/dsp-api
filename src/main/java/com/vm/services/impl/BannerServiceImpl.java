@@ -1,6 +1,8 @@
 package com.vm.services.impl;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,12 +11,15 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vm.config.BannerConfig;
 import com.vm.config.BannerConfig.Token;
+import com.vm.model.BannerPojo;
+import com.vm.model.Banners;
 
 /**
  * We put things that are related to the Banner service 
@@ -30,6 +35,8 @@ public class BannerServiceImpl
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BannerServiceImpl.class);
 
+    private ConcurrentHashMap<String, Banners> store = new ConcurrentHashMap<>();
+
 
     public BannerServiceImpl(RestTemplate restTemplate, BannerConfig config)
     {
@@ -38,37 +45,63 @@ public class BannerServiceImpl
         this.config = config;
     }
 
-    public void getAllBanners(){
-        
+
+    public void getAllBanners() throws RestClientException, JsonProcessingException
+    {
+        HttpHeaders requestHeaders = createHeaders(true);
+        HttpEntity<?> httpEntity = new HttpEntity<Object>(requestHeaders);
+        ResponseEntity<BannerPojo> response = restTemplate.exchange(config.getBannersUrl(), HttpMethod.GET, httpEntity, BannerPojo.class);
+        BannerPojo banners = response.getBody();
+        Arrays.asList(banners.getBanners())
+            .forEach(p -> store.put(p.getId(), p));
+       store.values().stream().forEach(Banners::toString);
+
     }
 
-    public void  createToken() throws JsonProcessingException
+
+    public void createToken() throws JsonProcessingException
     {
-         ResponseEntity<String> response =
-            restTemplate.exchange(config.getAuthUrl(), HttpMethod.POST, 
-                createJsonRequest(new ObjectMapper().writeValueAsString(config.getAuth())), String.class);
-         ;
-         try
+        ResponseEntity<String> response =
+            restTemplate.exchange(config.getAuthUrl(), HttpMethod.POST,
+                createJsonRequest(new ObjectMapper().writeValueAsString(config.getAuth()), false), String.class);;
+        try
         {
             config.setToken(new ObjectMapper().readValue(response.getBody(), Token.class));
         }
         catch (IOException e)
         {
+            /*
+             * what needs to happen in case the external 
+             * url is broken and not available.
+             * For now I am just looging it to logs but
+             * that is not good enough.
+             * 
+             */
             // TODO Auto-generated catch block need to write the proper code
-            e.printStackTrace();
+            LOGGER.error("Error in communicating with banner server ", e);
         }
-         
+
     }
 
 
-    private HttpEntity<String> createJsonRequest(String jsonInString)
+    private HttpEntity<String> createJsonRequest(String jsonInString, boolean authHeader)
         throws JsonProcessingException
+    {
+        HttpEntity<String> entity = new HttpEntity<String>(jsonInString, createHeaders(authHeader));
+        LOGGER.info("Json String :: " + jsonInString);
+        return entity;
+    }
+
+
+    private HttpHeaders createHeaders(boolean authHeader)
     {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Content-Type", "application/json");
-        HttpEntity<String> entity = new HttpEntity<String>(jsonInString, headers);
-        LOGGER.info("Deleting Entity :: " + jsonInString);
-        return entity;
+        if (authHeader)
+        {
+            headers.set("Authorization", config.getToken().getToken());
+        }
+        return headers;
     }
 
 }

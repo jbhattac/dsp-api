@@ -27,6 +27,7 @@ public class DspApp implements CommandLineRunner
     {
         bannerService.createToken();
         config.getToken().getToken();
+        bannerService.getAllBanners();
 
     }
     
